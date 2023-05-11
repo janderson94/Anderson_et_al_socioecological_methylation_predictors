@@ -8,21 +8,23 @@ rm(list = grep(ls(),invert=T,pattern="results",value = T))
 #Start with results matrices and meta info table
 info<-read.table("./Data/meta_info_n295.txt",header=T)
 
-#Number of unique individuals?
+#How many unique individuals, and unique males and females?
 length(unique(info$sname))
 
-#How many males and females?
-colSums(table(unique(cbind.data.frame(info$sname,info$sex.x))))
+colSums(table(unique(cbind.data.frame(info$sname,info$sex))))
 
 #How many repeated individuals?
 length(table(info$sname)[table(info$sname)>1])
 
-length(which(is.na(info$rank)))
+#How many low-quality habitat samples and individuals?
+colSums(table(unique(cbind.data.frame(info$sname,info$habitat_quality))))
+table(info$habitat_quality)
 
 
 
-
-#Model 1 results.
+####################
+#Results for Model 1
+####################
 library(qvalue)
 
 #How many sites significant at 10% FDR excluding high SE loci?
@@ -32,10 +34,6 @@ length(which(qvalue(results_model1$male_rank_pvalue[which(results_model1$male_ra
 length(which(qvalue(results_model1$female_rank_pvalue[which(results_model1$female_rank_se_beta<0.6)])$qvalues<.1))
 
 length(which(qvalue(results_model1$age_pvalue[which(results_model1$age_se_beta<0.6)])$qvalues<.1))
-
-
-#No effect of cumulative early adversity.
-length(which(qvalue(results_model1$cumulative_pvalue[which(results_model1$cumulative_se_beta<0.6)])$qvalues<.1))
 
 
 #Overlap between tested loci and functional compartments
@@ -59,15 +57,19 @@ table(sign(tmp2$bhat[tmp2$site %in% overlap$site[overlap$V7=="cpg_island"]]))/su
 table(sign(tmp2$bhat[tmp2$site %in% overlap$site[overlap$V7!="cpg_island"]]))/sum(table(sign(tmp2$bhat[tmp2$site %in% overlap$site[overlap$V7!="cpg_island"]])))
 
 
-#
+#No effect of cumulative early adversity.
+length(which(qvalue(results_model1$cumulative_pvalue[which(results_model1$cumulative_se_beta<0.6)])$qvalues<.1))
+
+#Clean up
 rm(list = grep(ls(),invert=T,pattern="results",value = T))
 
 
 
 
-###################
-#Results for model2
-###################
+####################
+#Results for model 2
+####################
+
 #Main effect of habitat quality?
 length(which(qvalue(results_model2$habitat_quality_pvalue[which(results_model2$habitat_quality_se_beta<0.6)])$qvalues<.1))
 
@@ -78,7 +80,6 @@ length(which(qvalue(results_model2$cumulative_high_quality_pvalue[which(results_
 length(which(qvalue(results_model2$cumulative_low_quality_pvalue[which(results_model2$cumulative_low_quality_se_beta<0.6)])$qvalues<.2 | qvalue(results_model2$cumulative_high_quality_pvalue[which(results_model2$cumulative_high_quality_se_beta<0.6)])$qvalues<.2))
 
 
-#
 keep<-which(results_model2$cumulative_low_quality_se_beta<0.6 & results_model2$habitat_quality_se_beta<0.6)
 tmp<-cbind.data.frame(results_model2$cumulative_low_quality_pvalue[keep],results_model2$cumulative_low_quality_bhat[keep],results_model2$habitat_quality_bhat[keep])
 
@@ -88,14 +89,26 @@ tmp2<-tmp[which(tmp$qvalue< 0.1),]
 
 cor.test(tmp2[,2],tmp2[,3])
 
+#Cumulative EA low-quality vs high-quality
+keep<-which(results_model2$cumulative_low_quality_se_beta<0.6 & results_model2$cumulative_high_quality_se_beta<0.6)
+tmp<-cbind.data.frame(results_model2$cumulative_low_quality_pvalue[keep],results_model2$cumulative_low_quality_bhat[keep],results_model2$cumulative_high_quality_bhat[keep])
+
+tmp$qvalue<-qvalue(tmp[,1])$qvalues
+tmp2<-tmp[which(tmp$qvalue< 0.1),]
+
+cor.test(tmp2[,2],tmp2[,3])
+
+rm(list = grep(ls(),invert=T,pattern="results",value = T))
+
 
 ####################################
 info<-read.table("./Data/meta_info_n295.txt",header=T)
+info$cumulative_ea<-apply(info[,7:11],1,sum)
+
 
 wilcox.test(info$cumulative_ea[info$habitat_quality==0],info$cumulative_ea[info$habitat_quality==1])
 
 
-rm(list = grep(ls(),invert=T,pattern="results",value = T))
 
 #What are the effects of each individual source of adversity in the low quality environment?
 
