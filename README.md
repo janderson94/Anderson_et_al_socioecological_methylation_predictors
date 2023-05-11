@@ -1,4 +1,4 @@
-# Anderson_et_al_socioecological_methylation_predictors
+## Anderson et al: DNA methylation signatures of early life adversity are exposure-dependent in wild baboons 
 
 ![image](./misc/baboon.jpg)
 

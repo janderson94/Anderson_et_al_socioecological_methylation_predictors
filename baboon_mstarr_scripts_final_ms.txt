@@ -1,0 +1,187 @@
+###########################################
+#trimmap.sh Trim and map reads using trim_galore and bwa
+###########################################
+#!/bin/bash
+#SBATCH -J trim_map_FILEINFO
+#SBATCH -n 8 
+#SBATCH -t 0-96:00 
+#SBATCH --mem=32G 
+
+module load TrimGalore
+module load cutadapt
+module load bwa
+module load samtools
+
+## trimming
+trim_galore -q 20 -o /data/tunglab/dlin/baboon_mSTARR/trimmed_fastq -a AGATCGGAAGAGC --stringency 2 --length 25 --paired FILEINFO_L001_R1_001.fastq.gz FILEINFO_L001_R2_001.fastq.gz
+# FILEINFO = library id
+
+## mapping
+bwa mem -t 8 PATH_TO_BWA_INDEXED_GENOME_DIR/Panubis1.0.fa FILEINFO_L001_R1_001_val_1.fq FILEINFO_L001_R2_001_val_2.fq > OUTDIR/FILEINFO.sam
+
+###########################################
+# QC
+###########################################
+#!/bin/bash
+
+module load fastqc 
+fastqc -t 6 -o OUTDIR *.fq
+
+##########################################
+# sort & count reads
+##########################################
+#!/bin/bash
+#SBATCH -J samtools_reads
+#SBATCH --mem=40G 
+
+cd /data/tunglab/dlin/baboon_mSTARR/mapped_sam
+module load samtools
+
+# count numbers of reads mapped
+for f in `ls L*.sam`; do samtools view -c -f 3 -F 2316 ${f} >> tmp_reads.txt; done
+ls L*.sam | sed 's/_S.*sam//g' > name.txt
+paste name.txt tmp_reads.txt > mapped_reads.txt
+
+# sam to bam and sort by read name
+for b in `ls L*.sam`; do samtools view -bSq 10 -f 0x2 ${b} -h | samtools sort -n - -o ${b}_sortedbyread.bam; done
+
+
+## Merge RNA libraries for the same replicate b/c each RNA replicate was made into two libraries.
+module load samtools
+module load bedtools2
+# example scripts for two RNA replicates
+samtools merge /data/tunglab/dlin/baboon_mSTARR/mapped_sam/meth1_rna.bam L31443*.bam L31481*.bam
+samtools merge /data/tunglab/dlin/baboon_mSTARR/mapped_sam/sham1_rna.bam L31449*.bam L31487*.bam
+
+#########################################
+# subset msp1 reads
+#########################################
+#!/bin/sh
+
+module load samtools/1.3.1-gcb01
+module load bedtools2
+
+# get qnames of reads with msp1 cut-site
+samtools view -Sq 10 FILE_sorted.bam| grep -P '\tCGG|GGC\t' | grep '=' | awk '{print $1}' | sort  >  FILE_msp1_qname.txt 
+# subset reads based on qnames, then converted to paired-end bed
+samtools view -h FILE_sorted.bam| awk 'FNR==NR {FILE_msp1_qname[$1];next} /^@/||($1 in FILE_msp1_qname)' FILE_msp1_qname.txt - | samtools collate -O - FILE | samtools view -b - | bedtools bamtobed -bedpe -i stdin | sort -V -k1,1 -k2.2n -k3,3n > FILE_msp1_pe.tmp 
+# retain fragments with length b/w 0 ~ 2k bp
+awk '{OFS="\t"; print $1,$2,$6,$7}' FILE_msp1_pe.tmp | awk '($3-$2) >= 0 && ($3-$2) <= 2000' | sort -V -k1,1 -k2,2n -k3,3n > FILE_msp1_pe_filtered.bed 
+
+###########################################
+### subsetting sheared libraries by chromosomes
+###########################################
+#!/bin/sh
+module load samtools
+module load bedtools2
+
+## the same priciples to subset sheared reads per chromosome per bam file.
+for chrom in `seq 1 20` X Y
+do
+    samtools view -bh FILE_sorted.bam chr${chrom} > FILE_chr${chrom}.bam &
+    wait
+    samtools index FILE_chr${chrom}.bam
+done
+
+# exclude msp1 qnames
+samtools view -Sq 10 FILE_chrCHR.bam| grep -P -v '\tCGG|GGC\t' | grep '=' | awk '{print $1}' | sort | comm -23 -  FILE_msp1_qname.txt | sort  > FILE_CHR_sheared_qname.txt 
+
+samtools view -h FILE_chrCHR.bam| awk 'FNR==NR {FILE_CHR_sheared_qname[$1];next} /^@/||($1 in FILE_CHR_sheared_qname)' FILE_CHR_sheared_qname.txt -  | samtools collate -O - FILE_CHR_sheared| samtools view -b - | bedtools bamtobed -bedpe -i stdin | sort -V -k1,1 -k2,2n -k3,3n > FILE_CHR_sheared_pe.tmp 
+
+awk '{OFS="\t"; print $1,$2,$6,$7}' FILE_CHR_sheared_pe.tmp | awk '($3-$2) >= 0 && ($3-$2) <= 2000' | sort -V -k1,1 -k2,2n -k3,3n > FILE_chrCHR_sheared_pe_filtered.bed
+FILE_CHR_f=`wc -l FILE_CHR_sheared_pe.tmp | cut -d" " -f1`
+
+# concatenate PE beds from each chromosome by replicate
+for b in `cat ../bfile.txt`; do ls ${b}_chr*_sheared_pe_filtered.bed | sort -V | xargs cat  > ${b}_sheared_pe_filtered.bed; done 
+
+##############################################
+# map the parsed fragments to 500bp windows in the Panubis genome
+##############################################
+#!/bin/sh
+module load bedtools2
+
+bedtools coverage -a Panubis1_500bpWindow.bed -b /data/tunglab/dlin/baboon_mSTARR/mapped_sam/bam/msp1/REP_msp1_pe_filtered.bed > counts_REP_msp1_pe_filtered.bed
+awk '{OFS="\t"; print $4}' counts_REP_msp1_pe_filtered.bed > counts_REP_msp1.txt
+
+bedtools coverage -a Panubis1_500bpWindow.bed -b /data/tunglab/dlin/baboon_mSTARR/mapped_sam/bam/chrom_bam/REP_sheared_pe_filtered.bed > counts_REP_sheared_pe_filtered.bed
+awk '{OFS="\t"; print $4}' counts_REP_sheared_pe_filtered.bed > counts_REP_sheared.txt
+
+# make count matrix (500bp window) 
+# scripts of formatting count matrices for msp1 fragments as examples 
+ls counts_DNA_*_msp1.txt | tr "\n" "\t" | sed -e 's/counts_//g ; s/_msp1\.txt//g' | sed -e 's/\t$/\n/' | sed -e 's/^/\t/' > dna_msp1_header
+paste -d"\t" Pa1_500.window counts_DNA_*_msp1.txt | cat dna_msp1_header - > dna_msp1_500_count_matrix.txt
+ls counts_*_rna_msp1.txt| tr "\n" "\t" | sed -e 's/counts_//g ; s/_msp1\.txt//g' | sed -e 's/\t$/\n/' | sed -e 's/^/\t/' > rna_msp1_header
+paste -d"\t" Pa1_500.window counts_*_rna_msp1.txt | cat rna_msp1_header - > rna_msp1_500_count_matrix.txt
+
+############################################
+# filter for testable windows in R ## show scripts for msp1 matrices as examples
+############################################
+# filtering criteria:
+# (a) DNA-seq replicate median coverage >=4X in meth AND sham
+# (b) Windows have counts in at least in four DNA-seq replicates in meth AND sham
+# (c) Windows have counts in at least in four RNA-seq replicates in meth OR sham
+library(tidyverse)
+library(data.table)
+
+## msp1 fragments
+# cd /data/tunglab/dlin/baboon_mSTARR/window_counts/msp1_counts
+dna.500.msp1 <- fread("dna_msp1_500_count_matrix.txt", header=TRUE)
+rna.500.msp1 <- fread("rna_msp1_500_count_matrix.txt", header=TRUE)
+
+meth.500.msp1 <- merge(dna.500.msp1 %>% select(V1, contains("meth")), rna.500.msp1 %>% select(V1, contains("meth")), by="V1", all=F)
+sham.500.msp1 <- merge(dna.500.msp1 %>% select(V1, contains("sham")), rna.500.msp1 %>% select(V1, contains("sham")), by="V1", all=TRUE)
+meth.500.msp1$meth_dna_zero <- apply(meth.500.msp1 %>% select(contains("DNA")), 1, function(x) length(which(x==0)))
+meth.500.msp1$meth_rna_zero <- apply(meth.500.msp1 %>% select(contains("rna")), 1, function(x) length(which(x==0)))
+sham.500.msp1$sham_dna_zero <- apply(sham.500.msp1 %>% select(contains("DNA")), 1, function(x) length(which(x==0)))
+sham.500.msp1$sham_rna_zero <- apply(sham.500.msp1 %>% select(contains("rna")), 1, function(x) length(which(x==0)))
+meth.500.msp1$meth_dna_median <- apply(meth.500.msp1 %>% select(contains("DNA_meth")), 1, function(x) median(x))
+sham.500.msp1$sham_dna_median <- apply(sham.500.msp1 %>% select(contains("DNA_sham")), 1, function(x) median(x))
+
+msp1.500 <- cbind(meth.500.msp1, sham.500.msp1 %>% select(-V1))
+msp1.500.filtered <- msp1.500 %>% filter(meth_dna_median >=4 & sham_dna_median >=4) %>% filter(meth_dna_zero<4 & sham_dna_zero<4) %>% filter(meth_rna_zero<4 | sham_rna_zero<4) %>% select(-meth_dna_median, -sham_dna_median, -meth_dna_zero,-meth_rna_zero,  -sham_dna_zero,-sham_rna_zero)
+dim(msp1.500.filtered) # 210942 25 
+
+#################################################
+# modeling: nested models to determine which are regulatory windows in R
+#################################################
+#!/usr/bin/env Rscript
+#SBATCH --get-user-env
+library(tidyverse)
+library(data.table)
+require(limma); require(edgeR); require(statmod)
+
+meta <- read.csv("mSTARR_info.csv", header=TRUE)
+rownames(meta) <- as.vector(meta$replicate) 
+meta$Treatment <- relevel(meta$Treatment, ref="sham")
+meta$Type <- relevel(meta$Type, ref="DNA")
+
+### msp1 models as examples
+# 500bp win all samples, sites in 2/6 dna samples, median DNA >=4x
+all <- readRDS("msp1_500_dnacov_dna_counts_filtered_13Jul21.RDS") 
+dim(all) # 210942    25     
+all <- all[,c(1, 8:13, 20:25, 2:7, 14:19)]
+
+design1<-model.matrix(~Type, data=meta)
+dge <- DGEList(counts=all[,-1])
+dge1 <- calcNormFactors(dge)
+v <- voomWithQualityWeights(dge1,design=design1,plot=FALSE)
+#v.exp.500 <- v$E
+design2<- model.matrix(~Treatment + Treatment:Type, data=meta)
+vfit <-lmFit(v,design2)
+vfit <- eBayes(vfit)
+#logCPM.500 <- cpm(dge1, log=TRUE)
+se.coef <- sqrt(vfit$s2.post) * vfit$stdev.unscaled
+vfit.df <- as.data.frame(cbind(vfit$p.value[,1:4],vfit$coefficient[,2:4],se.coef[,2:4]))
+vfit.df$site<-all$V1
+colnames(vfit.df) <- c("p_intercept","p_treatment", "p_RNA_sham", "p_RNA_meth", "b_treatment", "b_RNA_sham", "b_RNA_meth", "bse_treatment", "bse_RNA_sham", "bse_RNA_meth", "site")    
+
+### calculate p values for interaction betas
+vfit.df$b_interaction<-vfit.df$b_RNA_meth-vfit.df$b_RNA_sham
+vfit.df$bse_interaction<-sqrt(vfit.df$bse_RNA_meth^2+vfit.df$bse_RNA_sham^2)
+vfit.df$t_interaction=vfit.df$b_interaction/vfit.df$bse_interaction
+vfit.df$p_interaction=2*pt(-abs(vfit.df$t_interaction),df=20)   #df=24-4=20
+
+#################################################
+# calculate fdr for regulatory activities (b_meth, b_sham) & fdr for interaction (MD-dependent)
+#################################################
+## see permutation scripts
