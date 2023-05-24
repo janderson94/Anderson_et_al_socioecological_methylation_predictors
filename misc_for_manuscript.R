@@ -111,6 +111,7 @@ wilcox.test(info$cumulative_ea[info$habitat_quality==0],info$cumulative_ea[info$
 
 
 #What are the effects of each individual source of adversity in the low quality environment?
+library(tidyverse)
 
 for(f in seq(5)){
   n<-str_to_title(gsub(gsub(gsub(colnames(results_model3)[f*2+25],pattern="_pvalue",replacement = ""),pattern="_",replacement=" "),pattern=" low quality",replacement = ""))
@@ -131,9 +132,13 @@ for(f in seq(5)){
 rm(list = grep(ls(),invert=T,pattern="results",value = T))
 
 
-#Genomic distribution of environmental predictors of DNA methylation
-#Overlap of early life effects-- focusing on habitat quality, drought, maternal loss, group size
 
+
+####################################################################
+#Genomic distribution of environmental predictors of DNA methylation
+####################################################################
+
+#Overlap of early life effects-- focusing on habitat quality, drought, maternal loss, group size
 tmp<-results_model3[,c(1,3,5,7)+12]
 tmp2<-results_model3[,c(1,3,5,7)+24]
 
@@ -142,7 +147,7 @@ apply(tmp2,2,function(x){return(length(which(qvalue(x)$qvalues<.1)))})
 
 tmp3<-tmp2
 
-for(f in 1:5){
+for(f in 1:4){
   tmp3[,f]<-as.numeric(qvalue(tmp2[,f])$qvalues<.1)
 }
 
@@ -161,6 +166,8 @@ for(x in 1:4){
 
 #Overlap of drought and habitat quality?
 table(tmp3[,1],tmp3[,3])
+fisher.test(table(tmp3[,1],tmp3[,3]))
+log2(fisher.test(table(tmp3[,1],tmp3[,3]))$estimate)
 
 tmp4<-results_model3[,c(1,3,5,7)]
 
@@ -172,7 +179,6 @@ table(sign(tmp4[keep,1]),sign(tmp4[keep,3]))
 1-(7/4000)
 
 smoothScatter(tmp4[keep,1],tmp4[keep,3])
-
 
 
 #Overlap between rank effects and habitat quality or drought effects
@@ -1120,6 +1126,26 @@ hall_enrich_rank %>% mutate(name= fct_reorder(name,rank_p)) %>%
 
 
 
+
+#Correlations between drought and habitat quality is really high?
+keep<-which(results_model3$habitat_quality_se_beta<.6 & results_model3$drought_low_quality_se_beta<.6)
+p1<-results_model3$habitat_quality_pvalue[keep]
+p2<-results_model3$drought_low_quality_pvalue[keep]
+b1<-results_model3$habitat_quality_bhat[keep]
+b2<-results_model3$drought_low_quality_bhat[keep]
+
+keep2<-which(qvalue(p1)$qvalues<.1 | qvalue(p2)$qvalues<.1)
+
+
+keep2<-which(qvalue(p1)$qvalues<.1 & qvalue(p2)$qvalues<.1)
+table(sign(b1[keep2]),sign(b2[keep2]))
+
+#Is this always so insane? Lets look at non-sig sites
+keep2<-which(qvalue(p1)$qvalues>.6 & qvalue(p2)$qvalues>.6)
+
+table(sign(b1[keep2]),sign(b2[keep2]))
+
+fisher.test(table(sign(b1[keep2]),sign(b2[keep2])))
 
 
 

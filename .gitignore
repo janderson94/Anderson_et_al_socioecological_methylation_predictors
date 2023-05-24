@@ -35,3 +35,5 @@ covariates/*
 .RData
 .RDataTmp
 .Rhistory
+
+cell_type_tests.R

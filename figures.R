@@ -594,7 +594,6 @@ rm(list = grep(ls(),invert=T,pattern="results",value = T))
 #ChromHMM annotations
 
 #So what is a drought associated CpG site that falls within a regulatory region and is within a gene body?
-#Preferably one that is methylation dependent?
 
 
 library(tidyverse)
@@ -620,25 +619,40 @@ library(MetBrewer)
 
 #Alright lets focus on
 #chr17: 35210300-35210400
+
+#Are these drought sites high SE_beta?
+a<-results_model3$drought_low_quality_se_beta
+p<-results_model3$drought_low_quality_pvalue
+ids<-rownames(results_model3)
+df<-cbind.data.frame(ids,a,p)
+df$qvalue<-NA
+df$qvalue[which(df$a<.6)]<-qvalue(df$p[which(df$a<.6)])$qvalues
+df<-df[grep(df$ids,pattern="chr17"),]
+
+colnames(df)<-c("site","se_beta","pvalue","qvalue")
+df$chr<-gsub(df$site,pattern="_.*",replacement = "")
+df$pos<-gsub(df$site,pattern=".*_",replacement = "")
+
+df<-df[as.numeric(df$pos)>35150000,]
+df<-df[as.numeric(df$pos)<35250000,]
+df2<-df[which(df$qvalue<.2),]
+
+
+
 genes<-import.bed("./annotations_for_pileup_figure/genes.bed")
 chmm<-import.bed("./annotations_for_pileup_figure/chmm_chr17.bed")
 ms<-import.bed("./annotations_for_pileup_figure/ms.bed")
 dt<-import.bed("./annotations_for_pileup_figure/drought_associated_sites.bed")
 
 
-#Need full data for this
-sortBam("./annotations_for_pileup_figure/rna_meth.bam",destination = "./annotations_for_pileup_figure/rna_meth_sorted")
-sortBam("./annotations_for_pileup_figure/rna_sham.bam",destination = "./annotations_for_pileup_figure/rna_sham_sorted")
-
-indexBam("./annotations_for_pileup_figure/rna_meth_sorted.bam")
-indexBam("./annotations_for_pileup_figure/rna_sham_sorted.bam")
+indexBam("./annotations_for_pileup_figure/rna_meth_chr17.bam")
+indexBam("./annotations_for_pileup_figure/rna_sham_chr17.bam")
 
 
-
-dTrack <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_sham_sorted.bam",
+dTrack <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_sham_chr17.bam",
                           name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Steel Blue",alpha = 0.3))
 
-dTrack2 <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_meth_sorted.bam",
+dTrack2 <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_meth_chr17.bam",
                            name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Dark Green",alpha = 0.3))
 
 aTrack <- AnnotationTrack(range = ms,
@@ -661,23 +675,12 @@ aTrack4 <- AnnotationTrack(range = dt,
 
 ot <- OverlayTrack(trackList = list(dTrack2, dTrack))
 
-pdf("~/Desktop/test.pdf")
-plotTracks(list(ot,aTrack,aTrack2,aTrack3,aTrack4), from = 35175000,
-           to = 35400000, background.title = "White",
-           col.axis="#000000",col="Black",col.title="Black",
-           ylim=c(0,400))
-
-dev.off()
 
 #What are the chromHMM annotations at this location?
 tt<-read.table("./annotations_for_pileup_figure/chrom_hmm_peaks_sorted.bed")
 tt[tt$V1=="chr17"& 35210000>tt$V2 & 35210000 <tt$V3, ]
 
-tt[61254:61255,]
-head(tt)
-
 ttt<-read.delim("./Data/chrom_hmm/chrom_hmm_info.txt")
-ttt
 
 #And the gene name?
 gg<-read.table("./annotations_for_pileup_figure/panubis1_genes_sorted.bed")
@@ -685,25 +688,21 @@ gg[which(gg$V1=="chr17"& gg$V2<35210300 & gg$V3> 35210400), ]
 
 gg[which(gg$V1=="chr17"& gg$V2<35210300 & gg$V3> 35210400)+1, ]
 
-
 #Adding DNA too
-sortBam("./annotations_for_pileup_figure/dna_meth.bam",destination = "./annotations_for_pileup_figure/dna_meth_sorted")
-sortBam("./annotations_for_pileup_figure/dna_sham.bam",destination = "./annotations_for_pileup_figure/dna_sham_sorted")
-
-indexBam("./annotations_for_pileup_figure/dna_meth_sorted.bam")
-indexBam("./annotations_for_pileup_figure/dna_sham_sorted.bam")
+indexBam("./annotations_for_pileup_figure/dna_meth_chr17.bam")
+indexBam("./annotations_for_pileup_figure/dna_sham_chr17.bam")
 
 
-dTrack <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_sham_sorted.bam",
+dTrack <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_sham_chr17.bam",
                           name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Orange",alpha = .6),ylim=c(0,1200))
 
-dTrack2 <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_meth_sorted.bam",
+dTrack2 <- AlignmentsTrack(range="./annotations_for_pileup_figure/rna_meth_chr17.bam",
                            name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Steel Blue",alpha = .6),ylim=c(0,1200))
 
-dTrack3 <- AlignmentsTrack(range="./annotations_for_pileup_figure/dna_sham_sorted.bam",
+dTrack3 <- AlignmentsTrack(range="./annotations_for_pileup_figure/dna_sham_chr17.bam",
                            name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Orange",alpha = .6),ylim=c(0,350))
 
-dTrack4 <- AlignmentsTrack(range="./annotations_for_pileup_figure/dna_meth_sorted.bam",
+dTrack4 <- AlignmentsTrack(range="./annotations_for_pileup_figure/dna_meth_chr17.bam",
                            name = "Reads",window=-1,chromosome = "chr17",type="coverage",fill=alpha("Steel Blue",alpha = .6),ylim=c(0,350))
 
 
@@ -724,7 +723,6 @@ aTrack4 <- AnnotationTrack(range = dt,
                            fill=alpha("#2B6668",alpha = .8),stacking = "dense",shape="ellipse")
 
 #Overlaying methylation and sham reads
-
 ot <- OverlayTrack(trackList = list(dTrack2, dTrack),name = "RNA counts")
 ot2 <- OverlayTrack(trackList = list(dTrack3, dTrack4),name = "DNA counts")
 
@@ -739,11 +737,6 @@ dev.off()
 #Which genes are in this region?
 ggg<-read.table("./annotations_for_pileup_figure/panubis1_genes_sorted.bed")
 ggg[which(ggg$V1=="chr17" &ggg$V2 <35150000 & ggg$V3 >35250000),]
-
-ggg[14738,]
-ggg[14739,]
-ggg[14740,]
-
 
 
 #Figure 5b and 5c 
