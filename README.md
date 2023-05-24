@@ -7,14 +7,14 @@
 #These scripts break down into 5 parts:
 
 #### 1. Main models.
-####### Reads in the MACAU results and calculates standardized betas and p-values for each variable, stores them for downstream analyses. 
+Reads in the MACAU results and calculates standardized betas and p-values for each variable, stores them for downstream analyses. 
 #### 2. Figures
-####### Takes the output from Main Models and produces all of the main and supplementary figures in the manuscript.
+Takes the output from Main Models and produces all of the main and supplementary figures in the manuscript.
 #### 3. Misc_for_mansucript
-####### Reproduces results in text, as they appear.
+Reproduces results in text, as they appear.
 #### 4. Baboon_mstar_scripts_final_ms.txt 
-####### Demonstrates the initial processing workflow of raw mstarr data.
+Demonstrates the initial processing workflow of raw mstarr data.
 #### 5. Baboon_mstarr_scripts_final_ms.R
-####### Code for generating permutation-based p-values and associated q-values for 
+Code for generating permutation-based p-values and associated q-values for 
 
 Code for trimming, mapping, and filtering methylation data can be found https://github.com/janderson94/BaboonEpigeneticAging/tree/master/Trim_map_filter
