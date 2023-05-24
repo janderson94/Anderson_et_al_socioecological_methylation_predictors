@@ -1,10 +1,10 @@
-## Anderson et al: DNA methylation signatures of early life adversity are exposure-dependent in wild baboons 
+### Anderson et al: DNA methylation signatures of early life adversity are exposure-dependent in wild baboons 
 
 ![image](./misc/baboon.jpg)
 
 #### This repo is setup to be reproducible from intermediate files. Intermediate files should be downloaded from _______ and dropped into the directory where this repository is cloned. Set your working to the respository, and you should be set up.
 
-#These scripts break down into 5 parts:
+These scripts break down into 5 parts:
 
 #### 1. Main models.
 Reads in the MACAU results and calculates standardized betas and p-values for each variable, stores them for downstream analyses. 
