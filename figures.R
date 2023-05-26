@@ -1,4 +1,4 @@
-#Code for generation figures
+#Code for generating figures
 
 #Load dependencies
 library(Cairo)
@@ -900,8 +900,7 @@ p5c<-ggplot()+
 info<-read.table("./Data/meta_info_n295.txt",header=T)
 length(table(info$sname)[table(info$sname)>1])
 
-head(info)
-info2<-unique(cbind.data.frame(info$sname,info$matgrp.x,info$birth.x))
+info2<-unique(cbind.data.frame(info$sname,info$matgrp,info$birth))
 
 colnames(info2)<-c("sname","matgrp.x","birth.x")
 
@@ -909,39 +908,39 @@ colnames(info2)<-c("sname","matgrp.x","birth.x")
 habitat_qual<-rep(0,length(unique(info$sname)))
 
 #Those born in or before 1987 in Alto's group
-length(habitat_qual[substr(info2$birth.x,1,4)<=1987 & info2$matgrp==1])
+length(habitat_qual[substr(info2$birth,1,4)<=1987 & info2$matgrp==1])
 
 #Those born in or before 1991 in Hook's group
-length(habitat_qual[substr(info2$birth.x,1,4)<=1991 & info2$matgrp==2])
+length(habitat_qual[substr(info2$birth,1,4)<=1991 & info2$matgrp==2])
 
-habitat_qual[substr(info2$birth.x,1,4)<=1987 & info2$matgrp==1]<-1
-habitat_qual[substr(info2$birth.x,1,4)<=1991 & info2$matgrp==2]<-1
+habitat_qual[substr(info2$birth,1,4)<=1987 & info2$matgrp==1]<-1
+habitat_qual[substr(info2$birth,1,4)<=1991 & info2$matgrp==2]<-1
 
 info2$habitat_qual<-habitat_qual
 info2$habitat_qual[which(info2$habitat_qual==0 )]<-"Grey"
 info2$habitat_qual[which(info2$habitat_qual==1 & info2$matgrp==1)]<-"#5F4B8BFF"
-info2$habitat_qual[which(info2$habitat_qual==1 & info2$matgrp.x==2)]<-"#E69A8DFF"
+info2$habitat_qual[which(info2$habitat_qual==1 & info2$matgrp==2)]<-"#E69A8DFF"
 table(info2$habitat_qual)
 
 info2_plot<-info2
-info2_plot[order(as.Date(info2_plot$birth.x)),]->info2_plot
+info2_plot[order(as.Date(info2_plot$birth)),]->info2_plot
 info2_plot$order<-1:256
 
 tmp3<-unique(cbind.data.frame(info$sname,info$dart_date))
 colnames(tmp3)<-c("sname","dart_date")
 info3_plot<-merge(info2_plot,tmp3,by="sname")
 
-plot(as.Date(info3_plot$birth.x),info3_plot$order,
-     xlim=c(min(as.Date(info3_plot$birth.x)),
+plot(as.Date(info3_plot$birth),info3_plot$order,
+     xlim=c(min(as.Date(info3_plot$birth)),
             max(as.Date(info3_plot$dart_date))),ylim=c(0,256),
      xlab="Date",ylab="Individual",pch=20,
      col=alpha(info3_plot$habitat_qual,alpha=0.8),cex=1.5)
 par(new=T)
 plot(as.Date(info3_plot$dart_date),info3_plot$order,
-     xlim=c(min(as.Date(info3_plot$birth.x)),
+     xlim=c(min(as.Date(info3_plot$birth)),
             max(as.Date(info3_plot$dart_date))),ylim=c(0,256),pch=4,
      xlab="",ylab="",col=alpha(info3_plot$habitat_qual,alpha=0.8),cex=1.5)
-segments(x0=as.Date(info3_plot$birth.x),x1=as.Date(info3_plot$dart_date),
+segments(x0=as.Date(info3_plot$birth),x1=as.Date(info3_plot$dart_date),
          y0=info3_plot$order,y1=info3_plot$order,
          col=alpha(info3_plot$habitat_qual,alpha=0.8),lty=2)
 
@@ -955,7 +954,6 @@ rm(list = grep(ls(),invert=T,pattern="results",value = T))
 ################################
 # Figure S2
 ################################
-
 
 ########
 # A
@@ -1028,29 +1026,24 @@ rm(list = grep(ls(),invert=T,pattern="results",value = T))
 
 #Current versus early life rainfall?
 info<-read.table("./Data/meta_info_n295.txt",header=T)
-c<-cbind.data.frame(info$sname,info$birth.x,info$dart_date)
-colnames(c)<-c("sname","birth","dart_date")
-
-c2<-read.csv("~/Data/early_vs_adult_rainfall.csv",header=T)
-info2<-info[order(info$sname,info$dart_date),]
-c2<-c2[order(c2$sname,c2$dart_date),]
-length(which(c2$sname==info2$sname))
 
 par(mfrow=c(1,2),pty="s")
-plot(c2$adult_rain~c2$early_rain,pch=20,
+plot(info$adult_rain~info$early_rain,pch=20,
      xlab="Rainfall in the first year of life",
      ylab="Rainfall in the year leading up to darting",main="All individuals (N=295 samples)")
-abline(lm(c2$adult_rain~c2$early_rain),lty=2)
-summary(lm(c2$adult_rain~c2$early_rain))
+abline(lm(info$adult_rain~info$early_rain),lty=2)
+summary(lm(info$adult_rain~info$early_rain))
 
 #What about for individuals from the poor habitat quality?
-plot(c2$adult_rain[info2$habitat_quality==1]~c2$early_rain[info2$habitat_quality==1],pch=20,
+plot(info$adult_rain[info$habitat_quality==1]~info$early_rain[info$habitat_quality==1],pch=20,
      xlab="Rainfall in the first year of life",
      ylab="Rainfall in the year leading up to darting",main="Low Habitat Quality individuals (N=64 samples)")
-abline(lm(c2$adult_rain[info2$habitat_quality==1]~c2$early_rain[info2$habitat_quality==1]),lty=2)
-summary(lm(c2$adult_rain[info2$habitat_quality==1]~c2$early_rain[info2$habitat_quality==1]))
+abline(lm(info$adult_rain[info$habitat_quality==1]~info$early_rain[info$habitat_quality==1]),lty=2)
+summary(lm(info$adult_rain[info$habitat_quality==1]~info$early_rain[info$habitat_quality==1]))
 
 rm(list = grep(ls(),invert=T,pattern="results",value = T))
+
+
 
 
 

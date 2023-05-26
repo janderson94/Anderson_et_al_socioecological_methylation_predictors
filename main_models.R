@@ -3,12 +3,8 @@
 #Model 2 -- Batch/technical effects + Habitat Quality + Habitat Quality:Cumulative Early Adversity
 #Model 3 -- Batch/technical effects + Habitat Quality + Habitat Quality:Individual sources of adversity
 
-
 #Single dependency
 library(qvalue)
-
-#Meta info
-early_mat_n295<-read.table("./Data/early_mat_n295.txt",header=T)
 
 ########################
 ####### Model 1 ########

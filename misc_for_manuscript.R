@@ -77,7 +77,7 @@ length(which(qvalue(results_model2$habitat_quality_pvalue[which(results_model2$h
 length(which(qvalue(results_model2$cumulative_low_quality_pvalue[which(results_model2$cumulative_low_quality_se_beta<0.6)])$qvalues<.1))
 length(which(qvalue(results_model2$cumulative_high_quality_pvalue[which(results_model2$cumulative_high_quality_se_beta<0.6)])$qvalues<.1))
 
-length(which(qvalue(results_model2$cumulative_low_quality_pvalue[which(results_model2$cumulative_low_quality_se_beta<0.6)])$qvalues<.2 | qvalue(results_model2$cumulative_high_quality_pvalue[which(results_model2$cumulative_high_quality_se_beta<0.6)])$qvalues<.2))
+keep<-which(results_model2$cumulative_low_quality_se_beta<0.6 & results_model2$cumulative_high_quality_se_beta)
 
 
 keep<-which(results_model2$cumulative_low_quality_se_beta<0.6 & results_model2$habitat_quality_se_beta<0.6)
@@ -86,7 +86,7 @@ tmp<-cbind.data.frame(results_model2$cumulative_low_quality_pvalue[keep],results
 tmp$qvalue<-qvalue(tmp[,1])$qvalues
 tmp2<-tmp[which(tmp$qvalue< 0.1),]
 
-
+#Correlation between effect sizes?
 cor.test(tmp2[,2],tmp2[,3])
 
 #Cumulative EA low-quality vs high-quality
@@ -143,8 +143,6 @@ tmp<-results_model3[,c(1,3,5,7)+12]
 tmp2<-results_model3[,c(1,3,5,7)+24]
 
 tmp2[tmp>=0.6]<-NA
-apply(tmp2,2,function(x){return(length(which(qvalue(x)$qvalues<.1)))})
-
 tmp3<-tmp2
 
 for(f in 1:4){
@@ -163,22 +161,34 @@ for(x in 1:4){
   }
 }
 
+or
+p
+
 
 #Overlap of drought and habitat quality?
-table(tmp3[,1],tmp3[,3])
-fisher.test(table(tmp3[,1],tmp3[,3]))
-log2(fisher.test(table(tmp3[,1],tmp3[,3]))$estimate)
+keep<-which(results_model3$drought_low_quality_se_beta<.6 & results_model3$habitat_quality_se_beta<.6)
 
-tmp4<-results_model3[,c(1,3,5,7)]
+tmp<-cbind.data.frame(results_model3$habitat_quality_pvalue,results_model3$drought_low_quality_pvalue)[keep,]
+table(as.numeric(qvalue(tmp[,1])$qvalues<.1),as.numeric(qvalue(tmp[,2])$qvalues<.1))
 
-tmp4[tmp>=0.6]<-NA
+fisher.test(table(as.numeric(qvalue(tmp[,1])$qvalues<.1),as.numeric(qvalue(tmp[,2])$qvalues<.1)))
+log2(fisher.test(table(as.numeric(qvalue(tmp[,1])$qvalues<.1),as.numeric(qvalue(tmp[,2])$qvalues<.1)))$estimate)
 
-keep<-which(tmp3[,1]+tmp3[,3]==2)
-table(sign(tmp4[keep,1]),sign(tmp4[keep,3]))
+
+#Overlap of the direction of effect size?
+keep<-which(results_model3$drought_low_quality_se_beta<.6 & results_model3$habitat_quality_se_beta<.6)
+
+tmp<-cbind.data.frame(results_model3$habitat_quality_pvalue,results_model3$drought_low_quality_pvalue)[keep,]
+keep2<-which((as.numeric(qvalue(tmp[,1])$qvalues<.1)+as.numeric(qvalue(tmp[,2])$qvalues<.1))==2)
+length(keep2)
+
+tmp<-cbind.data.frame(results_model3$habitat_quality_bhat,results_model3$drought_low_quality_bhat)[keep,][keep2,]
+
+table(sign(tmp[,1]),sign(tmp[,2]))
 
 1-(7/4000)
 
-smoothScatter(tmp4[keep,1],tmp4[keep,3])
+smoothScatter(tmp[,1],tmp[,2])
 
 
 #Overlap between rank effects and habitat quality or drought effects
@@ -189,10 +199,12 @@ tmp2<-cbind.data.frame(results_model1[,13],results_model3[,c(1,5)+24])
 tmp2[tmp>=0.6]<-NA
 
 tmp3<-tmp2
-for(f in 1:3){
-  tmp3[,f]<-as.numeric(qvalue(tmp2[,f])$qvalues<.1)
-}
 
+for(f in 1:3){
+  keep<-which(tmp[,f]<=.6)
+  tmp3[-keep,f]<-NA
+  tmp3[keep,f]<-as.numeric(qvalue(tmp2[keep,f])$qvalues<.1)
+}
 
 or<-matrix(NA,nrow=3,ncol=3)
 colnames(or)<-rownames(or)<-gsub(colnames(tmp2),pattern="_pvalue",replacement = "")
@@ -204,6 +216,8 @@ for(x in 1:3){
     p[x,y]<-p[y,x]<-fisher.test(table(tmp3[,x],tmp3[,y]))$p.value
   }
 }
+
+or
 
 
 tmp4<-cbind.data.frame(results_model1[,3],results_model3[,c(1,5)])
@@ -225,7 +239,9 @@ tmp2[tmp>=0.6]<-NA
 
 tmp3<-tmp2
 for(f in 1:4){
-  tmp3[,f]<-as.numeric(qvalue(tmp2[,f])$qvalues<.1)
+  keep<-which(tmp[,f]<=.6)
+  tmp3[-keep,f]<-NA
+  tmp3[keep,f]<-as.numeric(qvalue(tmp2[keep,f])$qvalues<.1)
 }
 
 
@@ -241,7 +257,7 @@ for(x in 1:4){
 }
 
 log2(or[,4])
-
+p[,4]
 
 
 
@@ -315,7 +331,7 @@ p[6,]
 #What about age effects?
 OR[,4]
 log2(OR[,4])
-p[4,]
+p[,4]
 
 
 
@@ -378,14 +394,16 @@ log2(OR[rownames(OR)=="Enh",])
 
 #Transcription
 log2(OR[rownames(OR)=="Tx",])
+p[rownames(p)=="Tx",]
 
 
 #Heterochromatin
 log2(OR[rownames(OR)=="Het",])
+p[rownames(p)=="Het",]
 
 #Weakly repressed, polycomb-marked
 log2(OR[rownames(OR)=="ReprPCWk",])
-
+p[rownames(p)=="ReprPCWk",]
 
 
 
@@ -406,14 +424,12 @@ rm(results_temp,results,results2_temp,results2)
 # Attenuation of early life habitat quality over time. 
 ##########################################################
 
-info<-read.table("./Data/meta_info_n295.txt",header=T)
+#info<-read.table("./Data/meta_info_n295.txt",header=T)
+info<-read.table("~/Desktop/unneeded_data_for_github/Data/meta_info_n295_deanonymous.txt",header=T)
 predicted_binomial<-read.table("./results/habitat_quality_prediction_alpha1_50fold_binomial.txt")
 info$predicted_binomial_hab<-predicted_binomial$V1
 
 info$habitat_qual<-info$habitat_quality
-info$habitat_qual[info$habitat_qual==0]<-"post_shift"
-info$habitat_qual[which(info$habitat_qual==1 & info$matgrp.x==1)]<-"Altos"
-info$habitat_qual[which(info$habitat_qual==1 & info$matgrp.x==2)]<-"Hooks"
 
 TPR<-1:295
 FPR<-1:295
@@ -433,6 +449,7 @@ ROC<-function(x){
 integrate(ROC,lower=0,upper=1,subdivisions = 100000)
 
 
+#########################
 #Time since habitat shift? 
 info$time_since<-NA
 info$time_since[info$habitat_quality==1 & info$matgrp.x==1]<-as.numeric(as.Date(info$dart_date[info$habitat_quality==1 & info$matgrp.x==1])-as.Date("1988-01-01"))
@@ -441,12 +458,12 @@ info$time_since[info$habitat_quality==1 & info$matgrp.x==2]<-as.numeric(as.Date(
 info$time_since[which(info$time_since<0)]<-0
 
 summary(lm(info$predicted_binomial_hab[info$habitat_quality==1]~info$time_since[info$habitat_quality==1]))
+summary(lm(info$predicted_binomial_hab[info$habitat_quality==1]~info$age[info$habitat_quality==1]))
 
 summary(lm(info$predicted_binomial_hab~info$age))
 
-plot(info$predicted_binomial_hab~info$age)
-
 plot(info$predicted_binomial_hab[info$habitat_quality==1]~info$time_since[info$habitat_quality==1])
+
 
 #What about sample age?
 info$sample_age<-as.numeric(as.Date('2023-05-10')-as.Date(info$dart_date))
@@ -511,44 +528,29 @@ rm(list = grep(ls(),invert=T,pattern="results",value = T))
 ############################
 #MSTARR results
 ############################
-ms<-read.table("./results/misc_results/baboon_mstarr_summary_table_31Dec21.txt",header=T)
-
-#How many of these unique windows overlap test loci?
-loci<-str_split(rownames(results_model3),pattern = "_",simplify = T)
-loci<-as.data.frame(loci)
-loci[,2]<-as.numeric(loci[,2])
-
-
-library(parallel)
-
-ms$keep<-FALSE
-no_cores<-detectCores()
-cl <- makeCluster(no_cores-2)
-clusterExport(cl = cl, varlist = c("loci","ms"), envir = environment())
-library(parallel)
-
-tmp<-parSapply(cl=cl,X = 1:nrow(loci),function(f){
-  keep<-which(ms$chr==loci[f,1] & ms$start<= loci[f,2] & ms$end >= loci[f,2])
-  tmp<-FALSE
-  if(length(keep)>0){
-    tmp<-TRUE
-  }
-  return(tmp)
-})
-
-#write.table(tmp,"~/Desktop/tmp.txt")
-
-#We keep about 94000 loci.
-tmp<-read.table("~/Desktop/tmp.txt")
-table(tmp)
-
-
-#mstarr results
 ms<-read.table("./results/misc_results/mstarr_overlap_with_tested_sites.bed")
 ms2<-read.table("./results/misc_results/baboon_mstarr_summary_table_31Dec21.txt",header=T)
 
 colnames(ms)[4:27]<-colnames(ms2)
 
+#If we have msp1 data, exclude the sheared results.
+dups<-table(ms$site)[table(ms$site)>1]
+
+#Exclude a result if it sheared and msp1 exists
+#Very efficient code. Best practices. 11/10.
+for(d in names(dups)){
+  if(length(unique(ms$source[ms$site==d]))>1){
+    ms_temp<-ms[-which(ms$site ==d & ms$source =="sheared"),]
+    ms<-ms_temp
+    }
+  
+}
+
+
+
+#We keep about 94000 loci.
+ms$cpg<-paste(ms$V1,ms$V2,sep="_")
+length(unique(ms$cpg))
 
 ms$reg_activity[is.na(ms$reg_activity)]<-"none"
 table(ms$reg_activity)/sum(length(ms$reg_activity))
@@ -558,11 +560,15 @@ table(ms$meth_depend[ms$reg_activity!="none"])
 
 #How many unique fragments?
 ms3<-unique(ms[ms$site %in% ms2$site,-c(1:3)])
+ms3<-ms3[,-25]
+ms3<-unique(ms3)
 table(ms3$source)
 
 table(ms3$reg_activity=="none")
 table(ms3$reg_activity=="none")/length(ms3$reg_activity)
 
+table(ms3$meth_depend)
+397/424
 
 #Enrichment in chromHMM annotations?
 ms_enrichment<-read.table("results/misc_results/mstarr_results_to_plot",header=T)
@@ -579,19 +585,7 @@ ms_enrichment
 
 #Enrichment of rank, drought, and age effects across FDR thresholds.
 ms_full<-read.table("./results/misc_results/baboon_mstarr_summary_table_31Dec21.txt",header=T)
-ms_full$reg_activity<-as.character(ms_full$reg_activity)
-ms_full$meth_depend<-as.character(ms_full$meth_depend)
-ms_full$reg_activity[is.na(ms_full$reg_activity)]<-"no_reg"
-ms_full$meth_depend[is.na(ms_full$meth_depend)]<-"no_md"
-
-table(ms_full$reg_activity)
-
-tmp<-ms_full[ms_full$chr=="chrY",]
-table(tmp$reg_activity)
-table(tmp$reg_activity,tmp$meth_depend)
-
-
-ms<-read.table("./results/misc_results/mstarr_overlap_with_tested_sites.bed",header=F)
+ms<-read.table("./results/misc_results/mstarr_overlap_with_tested_sites.bed")
 ms$site<-paste(ms$V1,ms$V2,sep="_")
 ms2<-ms[,c(7,22:28)][,c(1,5,6,7,8)]
 colnames(ms2)<-c("window","reg_activity","meth_depend","source","site")
