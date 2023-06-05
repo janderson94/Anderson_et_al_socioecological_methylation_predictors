@@ -15,6 +15,6 @@ Reproduces results in text, as they appear.
 #### 4. Baboon_mstar_scripts_final_ms.txt 
 Demonstrates the initial processing workflow of raw mstarr data.
 #### 5. Baboon_mstarr_scripts_final_ms.R
-Code for generating permutation-based p-values and associated q-values for 
+Code for generating permutation-based p-values and associated q-values for identifying regulatory and methylation-dependent regulatory activity.
 
 Code for trimming, mapping, and filtering methylation data can be found https://github.com/janderson94/BaboonEpigeneticAging/tree/master/Trim_map_filter
