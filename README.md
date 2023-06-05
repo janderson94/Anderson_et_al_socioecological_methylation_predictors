@@ -2,7 +2,7 @@
 
 ![image](./misc/baboon.jpg)
 
-#### This repo is setup to be reproducible from intermediate files. Intermediate files should be downloaded from _______ and dropped into the directory where this repository is cloned. Set your working to the respository, and you should be set up.
+#### This repo is setup to be reproducible from intermediate files. Intermediate files should be downloaded from a zenodo dataset (link forthcoming) and dropped into the directory where this repository is cloned. Set your working to the respository, and you should be set up.
 
 These scripts break down into 5 parts:
 
